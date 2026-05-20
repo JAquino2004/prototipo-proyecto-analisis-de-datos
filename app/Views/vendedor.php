@@ -17,6 +17,7 @@
       <div class="card">
         <h2>📦 Productos</h2>
         <p>Gestiona tus productos</p>
+
         <button onclick="window.location.href='<?= base_url('productos') ?>'">
           Ir
         </button>
@@ -25,19 +26,31 @@
       <div class="card">
         <h2>🧾 Manejar Órdenes</h2>
         <p>Administra pedidos</p>
+
         <button onclick="window.location.href='<?= base_url('ordenes') ?>'">
           Ir
         </button>
       </div>
 
       <div class="card">
-        <h2>🧾 Manejar Ubicaciones</h2>
+        <h2>📍 Manejar Ubicaciones</h2>
         <p>Administra ubicaciones</p>
+
         <button onclick="window.location.href='<?= base_url('ubicaciones') ?>'">
           Ir
         </button>
       </div>
-      
+
+    
+      <div class="card">
+        <h2>👤 Editar Perfil</h2>
+        <p>Actualiza tu información personal</p>
+
+        <button onclick="window.location.href='<?= base_url('perfil') ?>'">
+          Ir
+        </button>
+      </div>
+
     </div>
 
   </div>

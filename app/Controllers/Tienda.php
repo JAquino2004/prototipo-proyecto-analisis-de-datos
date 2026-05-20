@@ -2,19 +2,25 @@
 
 namespace App\Controllers;
 
-use App\Models\ProductoModel;
-
 class Tienda extends BaseController
 {
     public function index()
     {
-        $model = new ProductoModel();
+        $db = \Config\Database::connect();
 
-        $data['productos'] = $model
-            ->where('activo', 1)
-            ->where('cantidad >', 0)
-            ->findAll();
+        $productos = $db->table('productos p')
+            ->select('
+                p.*,
+                u.nombre as vendedor_nombre
+            ')
+            ->join('usuarios u', 'u.id = p.vendedor_id')
+            ->where('p.activo', 1)
+            ->where('p.cantidad >', 0)
+            ->get()
+            ->getResultArray();
 
-        return view('tienda', $data);
+        return view('tienda', [
+            'productos' => $productos
+        ]);
     }
 }

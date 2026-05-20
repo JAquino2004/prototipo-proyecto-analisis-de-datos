@@ -84,7 +84,7 @@
 
   </div>
 
-  <!-- 🔥 SCRIPT PARA EDITAR -->
+
   <script>
     function editarProducto(id, nombre, precio, medida, cantidad, activo) {
       document.querySelector('input[name="id"]').value = id;

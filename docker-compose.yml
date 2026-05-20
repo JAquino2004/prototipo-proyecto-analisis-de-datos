@@ -3,56 +3,69 @@ services:
     build:
       context: ./
       dockerfile: Dockerfile
+
     ports:
       - "90:80"
+
     volumes:
-      # - /Users/greyes/Documents/nexo:/var/www/html  #(MacOS)
-      - .:/var/www/html  #(Linux ed)
-      # - /home/greyes-laptop/Documentos/nexo:/var/www/html    # (Linux)
-      # - /c/Users/greyes-laptop/Desktop/Workspace/nexo/nexo:/var/www/html
+      - .:/var/www/html
+
     environment:
-      PHP_TIMEZONE: America/Guatemala  # Configura aquí las variables de entorno específicas para PHP
+      PHP_TIMEZONE: America/Guatemala
+
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
     depends_on:
       - database
       - phpmyadmin
+
     networks:
       - app-network
 
   database:
     image: mariadb:latest
+
     restart: always
+
     ports:
-      - "3310:3307"
+      - "3310:3306"
+
     environment:
       MYSQL_ROOT_PASSWORD: comercial
       MYSQL_DATABASE: comercial
       MYSQL_USER: comercial
       MYSQL_PASSWORD: comercial
+
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
     networks:
       - app-network
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:latest
+
     restart: always
+
     ports:
       - "8087:80"
+
     environment:
       PMA_HOST: database
-      MYSQL_ROOT_PASSWORD: 1566aass
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: comercial
       UPLOAD_LIMIT: 64M
-    networks:
-      - app-network
 
-  mailhog:
-    image: mailhog/mailhog
-    ports:
-      - "1027:1025"
-      - "8027:8025"
+    depends_on:
+      - database
+
     networks:
       - app-network
 
 networks:
   app-network:
     driver: bridge
+
+volumes:
+  mariadb_data:

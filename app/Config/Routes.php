@@ -30,3 +30,6 @@ $routes->get('admin/usuarios', 'Admin::usuarios');
 $routes->get('admin/eliminar/(:num)', 'Admin::eliminar/$1');
 $routes->get('admin/productos', 'Admin::productos');
 $routes->get('admin/producto/eliminar/(:num)', 'Admin::eliminarProducto/$1');
+$routes->get('perfil', 'Usuarios::editar');
+$routes->post('perfil/actualizar', 'Usuarios::actualizar');
+$routes->post('orden/detalle/actualizar/(:num)', 'Orden::actualizarDetalle/$1');

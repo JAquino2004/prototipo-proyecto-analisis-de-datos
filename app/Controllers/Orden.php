@@ -6,59 +6,78 @@ use CodeIgniter\Controller;
 
 class Orden extends Controller
 {
-    //  VER ÓRDENES
+    // VER ÓRDENES
     public function index()
-{
-    $db = \Config\Database::connect();
+    {
+        $db = \Config\Database::connect();
 
-    $usuario_id = session('id');
-    $rol = session('rol');
+        $usuario_id = session('id');
+        $rol = session('rol');
 
-    // 🔥 obtener filtro
-    $estado = $this->request->getGet('estado');
+        // filtro
+        $estado = $this->request->getGet('estado');
 
-    // 🔹 base query
-    if ($rol === 'vendedor') {
-        $builder = $db->table('ordenes o')
-            ->select('o.*, u.nombre as cliente')
-            ->join('usuarios u', 'u.id = o.comprador_id')
-            ->where('o.vendedor_id', $usuario_id);
-    } else {
-        $builder = $db->table('ordenes o')
-            ->select('o.*, u.nombre as vendedor')
-            ->join('usuarios u', 'u.id = o.vendedor_id')
-            ->where('o.comprador_id', $usuario_id);
+        // query base
+        if ($rol === 'vendedor') {
+
+            $builder = $db->table('ordenes o')
+                ->select('
+                    o.*,
+                    u.nombre as cliente,
+                    u.telefono as telefono
+                ')
+                ->join('usuarios u', 'u.id = o.comprador_id')
+                ->where('o.vendedor_id', $usuario_id);
+
+        } else {
+
+            $builder = $db->table('ordenes o')
+                ->select('
+                    o.*,
+                    u.nombre as vendedor,
+                    u.telefono as telefono
+                ')
+                ->join('usuarios u', 'u.id = o.vendedor_id')
+                ->where('o.comprador_id', $usuario_id);
+        }
+
+        // aplicar filtro
+        if ($estado) {
+            $builder->where('o.estado', $estado);
+        }
+
+        $ordenes = $builder
+            ->orderBy('o.creado_en', 'DESC')
+            ->get()
+            ->getResultArray();
+
+        // productos
+        foreach ($ordenes as &$orden) {
+
+            $orden['productos'] = $db->table('orden_detalle od')
+                ->select('
+                    p.nombre,
+                    od.cantidad,
+                    od.precio,
+                    od.id as detalle_id
+                ')
+                ->join('productos p', 'p.id = od.producto_id')
+                ->where('od.orden_id', $orden['id'])
+                ->get()
+                ->getResultArray();
+        }
+
+        return view('ordenes', [
+            'ordenes' => $ordenes,
+            'estadoActual' => $estado
+        ]);
     }
 
-    // 🔥 aplicar filtro si existe
-    if ($estado) {
-        $builder->where('o.estado', $estado);
-    }
-
-    $ordenes = $builder
-        ->orderBy('o.creado_en', 'DESC')
-        ->get()
-        ->getResultArray();
-
-    // 🔥 productos
-    foreach ($ordenes as &$orden) {
-        $orden['productos'] = $db->table('orden_detalle od')
-            ->select('p.nombre, od.cantidad')
-            ->join('productos p', 'p.id = od.producto_id')
-            ->where('od.orden_id', $orden['id'])
-            ->get()->getResultArray();
-    }
-
-    return view('ordenes', [
-        'ordenes' => $ordenes,
-        'estadoActual' => $estado // 👈 para resaltar botón activo
-    ]);
-}
-
-    // 🔥 CREAR ÓRDENES DESDE CARRITO
+    // CREAR ÓRDENES DESDE CARRITO
     public function guardar()
     {
         $db = \Config\Database::connect();
+
         $carrito = session('carrito');
 
         if (!$carrito) {
@@ -71,11 +90,11 @@ class Orden extends Controller
 
         $grupos = [];
 
-        // 🔹 AGRUPAR PRODUCTOS POR VENDEDOR (CORREGIDO)
+        // agrupar productos por vendedor
         foreach ($carrito as $item) {
+
             $producto = $productoModel->find($item['id']);
 
-            // Validación para evitar errores
             if (!$producto || !isset($producto['vendedor_id'])) {
                 continue;
             }
@@ -85,12 +104,11 @@ class Orden extends Controller
             $grupos[$vendedor_id][] = $item;
         }
 
-        // 🔹 CREAR ÓRDENES
+        // crear órdenes
         foreach ($grupos as $vendedor_id => $productos) {
 
             $ubicaciones = $this->request->getPost('ubicaciones');
 
-            // seguridad básica
             if (!isset($ubicaciones[$vendedor_id])) {
                 continue;
             }
@@ -110,6 +128,7 @@ class Orden extends Controller
 
             // insertar detalle
             foreach ($productos as $item) {
+
                 $db->table('orden_detalle')->insert([
                     'orden_id' => $orden_id,
                     'producto_id' => $item['id'],
@@ -121,13 +140,15 @@ class Orden extends Controller
 
         $db->transComplete();
 
-        //  limpiar carrito
+        // limpiar carrito
         session()->remove('carrito');
 
-        return redirect()->to('ordenes')->with('success', 'Órdenes creadas correctamente');
+        return redirect()
+            ->to('ordenes')
+            ->with('success', 'Órdenes creadas correctamente');
     }
 
-    //  CAMBIAR ESTADO (SOLO VENDEDOR Y SOLO SUS ÓRDENES)
+    // CAMBIAR ESTADO
     public function cambiarEstado($id, $estado)
     {
         if (session('rol') !== 'vendedor') {
@@ -136,14 +157,18 @@ class Orden extends Controller
 
         $db = \Config\Database::connect();
 
-        // validar estados permitidos
-        $estadosValidos = ['pendiente', 'entregado', 'cancelado'];
+        // validar estados
+        $estadosValidos = [
+            'pendiente',
+            'entregado',
+            'cancelado'
+        ];
 
         if (!in_array($estado, $estadosValidos)) {
             return redirect()->back();
         }
 
-        // 🔒 Validar que la orden le pertenece al vendedor
+        // validar dueño
         $orden = $db->table('ordenes')
             ->where('id', $id)
             ->where('vendedor_id', session('id'))
@@ -157,8 +182,55 @@ class Orden extends Controller
         // actualizar estado
         $db->table('ordenes')
             ->where('id', $id)
-            ->update(['estado' => $estado]);
+            ->update([
+                'estado' => $estado
+            ]);
 
         return redirect()->back();
+    }
+
+    // ACTUALIZAR DETALLE
+    public function actualizarDetalle($detalle_id)
+    {
+        if (session('rol') !== 'vendedor') {
+            return redirect()->back();
+        }
+
+        $db = \Config\Database::connect();
+
+        $cantidad = $this->request->getPost('cantidad');
+        $precio = $this->request->getPost('precio');
+
+        // validar detalle
+        $detalle = $db->table('orden_detalle od')
+            ->select('
+                od.*,
+                o.vendedor_id
+            ')
+            ->join('ordenes o', 'o.id = od.orden_id')
+            ->where('od.id', $detalle_id)
+            ->get()
+            ->getRowArray();
+
+        if (!$detalle) {
+            return redirect()->back();
+        }
+
+        // seguridad
+        if ($detalle['vendedor_id'] != session('id')) {
+            return redirect()->back();
+        }
+
+        // actualizar
+        $db->table('orden_detalle')
+            ->where('id', $detalle_id)
+            ->update([
+                'cantidad' => $cantidad,
+                'precio' => $precio
+            ]);
+
+        return redirect()
+            ->back()
+            ->with('success', 'Detalle actualizado');
     }
 }
